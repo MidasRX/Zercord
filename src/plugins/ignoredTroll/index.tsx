@@ -6,7 +6,7 @@
 
 import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType } from "@utils/types";
-import { RelationshipStore } from "@webpack/common";
+import { FluxDispatcher, RelationshipStore } from "@webpack/common";
 
 const trollMessages = [
     "PLS GIV ROBUX IM BLACK AFRICA NEED YOU",
@@ -37,7 +37,7 @@ function getTrollMessage(messageId: string): string {
 const settings = definePluginSettings({
     blockCalls: {
         type: OptionType.BOOLEAN,
-        description: "Auto-decline incoming calls from ignored users",
+        description: "Auto-decline incoming calls from ignored users (DMs and group chats)",
         default: true
     }
 });
@@ -49,36 +49,44 @@ export default definePlugin({
 
     settings,
 
-    patches: [
-        {
-            find: "renderContentOnly:",
-            replacement: {
-                match: /let{message:(\i),.{0,100}renderContentOnly:/,
-                replace: "$self.trollMessage($1);$&"
+    flux: {
+        MESSAGE_CREATE({ message }) {
+            if (!message?.author?.id) return;
+            if (RelationshipStore.isIgnored(message.author.id)) {
+                message.content = getTrollMessage(message.id);
+                message.embeds = [];
+                message.attachments = [];
+                message.sticker_items = [];
+                message.components = [];
             }
         },
-        {
-            find: '"CALL_CREATE"',
-            replacement: {
-                match: /case"CALL_CREATE":(\i)=/,
-                replace: "case\"CALL_CREATE\":if($self.shouldBlockCall(arguments[0]))return;$1="
+        MESSAGE_UPDATE({ message }) {
+            if (!message?.author?.id) return;
+            if (RelationshipStore.isIgnored(message.author.id)) {
+                message.content = getTrollMessage(message.id);
+                message.embeds = [];
+                message.attachments = [];
+                message.sticker_items = [];
+                message.components = [];
+            }
+        },
+        CALL_CREATE(event) {
+            if (!settings.store.blockCalls) return;
+            const userId = event?.userId ?? event?.ringerId;
+            if (userId && RelationshipStore.isIgnored(userId)) {
+                try {
+                    FluxDispatcher.dispatch({ type: "CALL_DELETE", channelId: event.channelId });
+                } catch { }
+            }
+        },
+        CALL_RINGING(event) {
+            if (!settings.store.blockCalls) return;
+            const userId = event?.userId ?? event?.ringerId;
+            if (userId && RelationshipStore.isIgnored(userId)) {
+                try {
+                    FluxDispatcher.dispatch({ type: "CALL_DELETE", channelId: event.channelId });
+                } catch { }
             }
         }
-    ],
-
-    trollMessage(message: any) {
-        if (!message?.author?.id) return;
-        if (RelationshipStore.isIgnored(message.author.id)) {
-            message.content = getTrollMessage(message.id);
-            if (message.embeds) message.embeds = [];
-            if (message.attachments) message.attachments = [];
-        }
-    },
-
-    shouldBlockCall(event: any): boolean {
-        if (!settings.store.blockCalls) return false;
-        const userId = event?.userId ?? event?.message?.author?.id;
-        if (!userId) return false;
-        return RelationshipStore.isIgnored(userId);
     }
 });

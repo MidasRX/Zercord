@@ -6,7 +6,7 @@
 
 import { ApplicationCommandInputType, sendBotMessage } from "@api/Commands";
 import definePlugin from "@utils/types";
-import { FluxDispatcher, SelectedChannelStore } from "@webpack/common";
+import { FluxDispatcher, SelectedChannelStore, UserStore } from "@webpack/common";
 
 let isGhostActive = false;
 let configFakeMute = true;
@@ -61,6 +61,17 @@ export default definePlugin({
             if (!configFakeMute && !configFakeDeafen) isGhostActive = false;
             else isGhostActive = true;
             syncState();
+        }
+    },
+
+    flux: {
+        SPEAKING(event: { userId: string; speakingFlags: number; }) {
+            // Suppress the green speaking ring for ourselves when ghost is active
+            if (!isGhostActive) return;
+            const myId = UserStore.getCurrentUser()?.id;
+            if (event.userId === myId) {
+                event.speakingFlags = 0;
+            }
         }
     },
 

@@ -1,0 +1,23 @@
+.vc-private-chat-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 1px solid rgba(110, 64, 201, 0.3);
+    color: #a78bfa;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.vc-private-chat-banner svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.vc-private-chat-lock {
+    color: #a78bfa;
+    margin-right: 4px;
+}
